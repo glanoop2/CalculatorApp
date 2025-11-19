@@ -1,21 +1,23 @@
-# ---- Stage 1: Build the project using Maven ----
+# ---------- Stage 1: Build & run tests ----------
 FROM maven:3.9.6-eclipse-temurin-17 AS build
 WORKDIR /app
 
-# Copy project files
+# Copy Maven descriptor and sources
 COPY pom.xml .
 COPY src ./src
 
-# Run tests and package
-RUN mvn clean package
+# Build the project AND run JUnit tests
+# If any test fails, the Docker build will fail.
+RUN mvn clean verify
 
-# ---- Stage 2: Run the application ----
+# ---------- Stage 2: Run the application ----------
 FROM eclipse-temurin:17-jdk
 WORKDIR /app
 
-# Copy the final JAR from stage 1
+# Copy the built JAR from the first stage
+# calculator-app-1.0.0.jar is produced in target/ by Maven :contentReference[oaicite:1]{index=1}
 COPY --from=build /app/target/*.jar app.jar
 
-# Run the Java JAR
-ENTRYPOINT ["java", "-jar", "app.jar"]
-
+# Run the main class from inside the JAR
+# (Jar doesn't declare Main-Class, so we use -cp + main class)
+ENTRYPOINT ["java", "-cp", "app.jar", "com.example.calculator.App"]
